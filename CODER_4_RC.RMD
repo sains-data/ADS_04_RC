@@ -1,0 +1,323 @@
+# KELOMPOK 4 ADS RC
+
+### INPUT DATA
+
+```{r}
+data <- read.csv("data_tubes.csv")
+
+data
+
+View(data)
+```
+
+### A). DATA CLEANING 
+
+```{r}
+sum(is.na(data))
+```
+
+```{r}
+# Mengubah "Apakah_penerima_beasiswa" menjadi numerik
+data$beasiswa <- ifelse(data$beasiswa == "Ya", 1, 0)
+
+# Mengubah "Keterlibatan_Organisasi" menjadi numerik
+data$Organisasi <- ifelse(data$Organisasi == "Aktif", 1, 0)
+
+```
+
+```{r}
+str(data)
+
+data
+```
+
+#### Melihat apakah pada atribut IPK terdapat nilai outlier atau ipk tidak boleh lebih dari 4
+
+```{r}
+# Mengecek apakah ada nilai IPK lebih dari 4
+outlier_ipk <- data[data$IPK > 4, ]
+
+# Menampilkan jumlah data yang lebih dari 4
+jumlah_outlier <- nrow(outlier_ipk)
+
+jumlah_outlier
+```
+
+```{r}
+# Statistik deskriptif sederhana
+summary(data)
+
+```
+
+## **B). Statistik Utama**
+
+uji f
+
+```{r}
+#Uji Regresi: Uji F dan Uji t
+#1. Bangun Model Regresi Berganda
+model <- lm(IPK ~ Rata.ratabelajar + beasiswa + Organisasi, data = data)
+
+summary(model)
+```
+
+```{r}
+anova(model)
+```
+
+uji t
+
+```{r}
+# Menampilkan nilai t-value, p-value, dan estimate tiap variabel
+uji_t <- summary(model)$coefficients
+uji_t
+```
+
+```{r}
+# Uji t Jam Belajar
+t_jam <- summary(model)$coefficients["Rata.ratabelajar", ]
+t_jam
+
+# Uji t Organisasi
+t_org <- summary(model)$coefficients["Organisasi", ]
+t_org
+
+# Uji t Beasiswa
+t_bea <- summary(model)$coefficients["beasiswa", ]
+t_bea
+
+```
+
+uji korelasi
+
+```{r}
+# Melihat korelasi numerik (IPK, Jam Belajar, Beasiswa, Organisasi)
+cor_matrix <- cor(data[, c("IPK", "Rata.ratabelajar",
+                           "beasiswa",
+                           "Organisasi")])
+
+cor_matrix
+```
+
+```{r}
+# Load package
+install.packages("corrplot")
+library(corrplot)
+
+# Membuat matriks korelasi (Spearman lebih aman karena ada variabel kategorik)
+cor_mat <- cor(data[, c("IPK", "Rata.ratabelajar",
+                                     "beasiswa",
+                                     "Organisasi")],
+               method = "spearman")
+
+# Menampilkan heatmap korelasi
+corrplot(cor_mat,
+         method = "color",        # warna heatmap
+         type = "upper",          # hanya bagian atas matriks
+         addCoef.col = "black",   # menampilkan nilai korelasi
+         tl.col = "black",        # warna label
+         tl.srt = 45,             # rotasi label
+         number.cex = 0.8,        # ukuran angka korelasi
+         col = colorRampPalette(c("blue", "white", "red"))(200)
+)
+
+```
+
+## **C). Uji Asumsi Regresi Beberapa asumsi yang dicek**
+
+```{r}
+#a. Uji Linearitas
+
+plot(model)
+
+#Interpretasi:
+#Garis biru ≈ garis merah → linear
+#Garis biru melengkung tajam → hubungan tidak linear
+```
+
+```{r}
+#b. Uji Homoskedastisitas (Breusch-Pagan Test)
+install.packages("lmtest")
+library(lmtest)
+bptest(model)
+
+```
+
+hipotesis dalam Uji Homoskedastisitas :
+
+H0 = Tidak ada heteroskedastisitas
+
+h1 = ada heteroskedastisitas
+
+Output menunjukkan:
+
+1.  BP = 6.4151 → nilai statistik BP (tidak terlalu perlu ditafsirkan detail).
+
+2.  df = 3 → derajat bebas (jumlah variabel independen).
+
+3.  p-value = 0.09307
+
+Karena p-value = 0.09307 \> 0.05,
+
+maka:Keputusan: Gagal tolak H0
+
+Berdasarkan hasil uji Homoskedastisitas, diperoleh nilai BP = 6.4151 dengan df = 3 serta p-value sebesar 0.09307. Karena p-value lebih besar dari taraf signifikansi 0.05, maka H0 gagal ditolak. Dengan demikian, dapat disimpulkan bahwa model regresi tidak mengalami heteroskedastisitas dan asumsi homoskedastisitas terpenuhi.
+
+```{r}
+residuals_model <- residuals(model)
+
+```
+
+```{r}
+# Install jika belum ada
+install.packages("nortest")
+
+# Load library
+library(nortest)
+
+# Anderson-Darling Test
+ad.test(residuals_model)
+
+```
+
+```{r}
+# Standarisasi residual
+resid_std <- (residuals_model - mean(residuals_model)) / sd(residuals_model)
+
+# Kolmogorov-Smirnov Test untuk distribusi Normal(0,1)
+ks.test(resid_std, "pnorm")
+
+```
+
+```{r}
+# c. mengambil residual dari modul
+residuals_model <- residuals(model)
+
+#Uji Normalitas Shapiro-Wilk
+shapiro.test(residuals_model)
+
+```
+
+Interpretasi:
+
+Jika p-value \> 0.05 → residual normal, asumsi normalitas terpenuhi.
+
+Jika p-value ≤ 0.05 → residual tidak normal, asumsi tidak terpenuhi.
+
+```{r}
+# Load library
+install.packages("car")
+library(car)
+
+# Uji Multikolinearitas dengan VIF
+vif(model)
+```
+
+Interpretasi:
+
+Rata.ratabelajar : 1.00200225662261
+
+beasiswa : 1.00176564268757
+
+Organisasi : 1.00035331036829
+
+Berdasarkan hasil perhitungan Variance Inflation Factor (VIF), diperoleh nilai VIF untuk seluruh variabel independen berada di sekitar angka 1. Hal ini menunjukkan bahwa antar variabel independen tidak memiliki hubungan linier yang kuat. Dengan demikian, dapat disimpulkan bahwa model regresi berganda tidak mengalami masalah multikolinearitas dan memenuhi asumsi independensi antar prediktor.
+
+## **C). Modeling**
+
+```{r}
+# Membuat model regresi linear berganda
+model_regresi <- lm( IPK ~ Rata.ratabelajar + beasiswa + Organisasi, data = data )
+
+# Melihat ringkasan hasil model
+summary(model_regresi)
+
+```
+
+## **Interpretasi Hasil Model Regresi Linear Berganda**
+
+## **Uji F (Signifikansi Model Secara Keseluruhan)**
+
+-   F-statistic = 0.139
+
+-   p-value = 0.9366 (\> 0.05)
+
+Interpretasi: Model regresi secara keseluruhan tidak signifikan. Artinya, kombinasi variabel:
+
+-   Jam belajar
+
+-   Penerima beasiswa
+
+-   Keaktifan organisasi
+
+tidak memiliki pengaruh yang signifikan terhadap IPK secara simultan.
+
+## **R-Square**
+
+-   Multiple R-squared = 0.001031
+
+-   Adjusted R-squared = –0.008062
+
+Interpretasi: Model hanya mampu menjelaskan 0,1% variasi IPK, yang artinya model sama sekali tidak baik untuk memprediksi IPK.
+
+## **Kesimpulan**
+
+Model regresi tidak signifikan, dan ketiga variabel (jam belajar, beasiswa, keaktifan organisasi) tidak memiliki pengaruh signifikan terhadap IPK mahasiswa. Variasi IPK hampir seluruhnya dijelaskan oleh faktor lain di luar model ini.
+
+```{r}
+anova(model_regresi)   # Uji F
+confint(model_regresi, level = 0.90) # Interval kepercayaan koefisien
+```
+
+## **Visualisasi 1 — Heatmap Korelasi Variabel**
+
+Untuk menunjukkan hubungan antar variabel di awal analisis.
+
+Mengapa penting? Karena membantu pembaca memahami bahwa memang hubungan antar variabel sangat lemah → menjelaskan mengapa model regresi tidak signifikan.
+
+```{r}
+#Heatmap Korelasi
+
+installed.packages("corrplot")
+library(corrplot)
+
+# Memilih variabel numerik
+data_korelasi <- data[, c("IPK",
+                          "Rata.ratabelajar",
+                          "beasiswa",
+                          "Organisasi")]
+
+corrplot(cor(data_korelasi), method = "color", addCoef.col = "black",
+         tl.col = "black", number.cex = 0.7)
+
+```
+
+## **Visualisasi 2 — Plot Residual vs Fitted**
+
+Untuk menunjukkan performa model dan apakah model sesuai asumsi linearitas & homoskedastisitas.
+
+Kenapa penting? Visualisasi utama dalam regresi untuk mengecek kualitas model.
+
+```{r}
+#Residual vs Fitted Plot
+plot(model_regresi$fitted.values,
+     model_regresi$residuals,
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     main = "Residual vs Fitted Plot",
+     pch = 19, col = "blue")
+abline(h = 0, col = "red", lwd = 2)
+
+```
+
+## **Visualisasi 3 — QQ-Plot Residual**
+
+Untuk menunjukkan bahwa residual tidak normal, yang sudah kamu temukan dalam uji asumsi.
+
+Kenapa dipilih? Karena ini mendukung narasi: "Model tidak signifikan dan residual tidak normal → model kurang cocok."
+
+```{r}
+qqnorm(model_regresi$residuals, main = "QQ-Plot Residual")
+qqline(model_regresi$residuals, col = "red", lwd = 2)
+
+```
